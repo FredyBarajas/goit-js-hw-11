@@ -1,53 +1,158 @@
 import axios from 'axios';
+import Notiflix, { Notify } from 'notiflix';
+import simpleLightbox from 'simplelightbox';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
 const searchWord = document.querySelector('#search-input');
 const key = '38213608-ad9783a4d46f018b5b60b3fea';
 const gallery = document.querySelector('.gallery');
 const urlBase = 'https://pixabay.com/api/';
-const btnApply = document.querySelector('button');
+const btnLoadMore = document.querySelector('#load-more');
+const btnApply = document.querySelector('.search-btn');
+const noMoreImages = document.querySelector('#no-more-images');
+let page = 1;
+const per_page = 40;
+let total = 0;
+let lightbox = new SimpleLightbox('.gallery a', {
+  captionsData: 'alt',
+  captionDelay: 200,
+});
 btnApply.addEventListener('click', searchImages);
 
-function searchImages(event) {
+function handleResponse(response) {
+  const images = response.data.hits;
+  const markup = images
+    .map(
+      image => `
+      <a class="photo-card"
+      href="${image.largeImageURL}">
+        <img src="${image.webformatURL}" alt="${image.tags}" loading="lazy" class="photo"/>
+        <div class="info">
+          <p class="info-item">
+            <b>Likes<br/>${image.likes}</b>
+          </p>  
+          <p class="info-item">
+            <b>Views<br/>${image.views}</b>
+          </p>
+          <p class="info-item">
+            <b>Comments<br/>${image.comments}</b>
+          </p>
+          <p class="info-item">
+            <b>Downloads<br/>${image.downloads}</b>
+          </p>
+        </div>
+      </a>`
+    )
+    .join('');
+  gallery.innerHTML += markup;
+  lightbox.refresh();
+  btnLoadMore.classList.replace('hidden', 'load-More');
+  noMoreImages.classList.add('hidden');
+  const totalHits = response.data.totalHits;
+  Notify.success(`Hooray! We found ${totalHits} images.`);
+  total = totalHits;
+  if (total < page * per_page) {
+    noMoreImages.classList.remove('hidden');
+    btnLoadMore.classList.replace('load-More', 'hidden');
+  }
+  page = 1;
+
+  if (images.length === 0) {
+    Notiflix.Notify.failure(
+      'Sorry, there are no images matching your search query. Please try again.'
+    );
+    btnLoadMore.classList.replace('load-More', 'hidden');
+  }
+}
+
+async function searchImages(event) {
+  btnLoadMore.classList.replace('load-More', 'hidden');
   event.preventDefault();
-  axios
-    .get(urlBase, {
+  gallery.innerHTML = '';
+
+  try {
+    const response = await axios.get(urlBase, {
       params: {
         key: key,
         q: searchWord.value,
         image_type: 'photo',
         orientation: 'horizontal',
         safesearch: true,
+        per_page: per_page,
+        page: page,
       },
-    })
-    .then(function (response) {
-      const images = response.data.hits;
-      console.log(images);
-      const markup = images
+    });
+    handleResponse(response);
+  } catch (error) {
+    console.log(error);
+    Notiflix.Notify.failure(
+      'Sorry, there are no images matching your search query. Please try again.'
+    );
+  }
+}
+
+btnLoadMore.addEventListener('click', loadMoreImages);
+
+async function loadMoreImages(event) {
+  event.preventDefault();
+  try {
+    const response = await axios.get(urlBase, {
+      params: {
+        key: key,
+        q: searchWord.value,
+        image_type: 'photo',
+        orientation: 'horizontal',
+        safesearch: true,
+        per_page: per_page,
+        page: page + 1,
+      },
+    });
+    const images = response.data.hits;
+    if (images.length === 0) {
+      Notiflix.Notify.info('No more images to load.');
+    } else {
+      const newMarkup = images
         .map(
           image => `
-        <div class="photo-card">
-          <img src="${image.webformatURL}" alt="" loading="lazy" />
-          <div class="info">
-            <p class="info-item">
-              <b>Likes</b>
-            </p>
-            <p class="info-item">
-              <b>Views</b>
-            </p>
-            <p class="info-item">
-              <b>Comments</b>
-            </p>
-            <p class="info-item">
-              <b>Downloads</b>
-            </p>
-          </div>
-        </div>`
+      <a class="photo-card"
+      href="${image.largeImageURL}">
+        <img src="${image.webformatURL}" alt="${image.tags}" loading="lazy" class="photo"/>
+        <div class="info">
+          <p class="info-item">
+            <b>Likes<br/>${image.likes}</b>
+          </p>  
+          <p class="info-item">
+            <b>Views<br/>${image.views}</b>
+          </p>
+          <p class="info-item">
+            <b>Comments<br/>${image.comments}</b>
+          </p>
+          <p class="info-item">
+            <b>Downloads<br/>${image.downloads}</b>
+          </p>
+        </div>
+      </a>`
         )
         .join('');
-      gallery.innerHTML = markup;
-    })
+      gallery.innerHTML += newMarkup;
+      lightbox.refresh();
+      console.log(total - page * per_page);
+      page += 1;
+      if (total < page * per_page) {
+        noMoreImages.classList.remove('hidden');
+        btnLoadMore.classList.replace('load-More', 'hidden');
+      }
+      const { height: cardHeight } = document
+        .querySelector('.gallery')
+        .firstElementChild.getBoundingClientRect();
 
-    .catch(function (error) {
-      // handle error
-      console.log(error);
-    });
+      window.scrollBy({
+        top: cardHeight * 2,
+        behavior: 'smooth',
+      });
+    }
+  } catch (error) {
+    console.log(error);
+    Notiflix.Notify.failure('Failed to load more images.');
+  }
 }
