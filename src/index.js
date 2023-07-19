@@ -49,10 +49,10 @@ function handleResponse(response) {
   btnLoadMore.classList.replace('hidden', 'load-More');
   noMoreImages.classList.add('hidden');
   const totalHits = response.data.totalHits;
-  Notify.success(`Hooray! We found ${totalHits} images.`);
+
   total = totalHits;
   page = page + 1;
-  if (total < page * per_page) {
+  if (total < page * per_page - 1) {
     noMoreImages.classList.remove('hidden');
     btnLoadMore.classList.replace('load-More', 'hidden');
   }
@@ -83,6 +83,7 @@ async function searchImages(event) {
       },
     });
     handleResponse(response);
+    Notify.success(`Hooray! We found ${total} images.`);
   } catch (error) {
     console.log(error);
     Notiflix.Notify.failure(
@@ -104,7 +105,7 @@ async function loadMoreImages(event) {
         orientation: 'horizontal',
         safesearch: true,
         per_page: per_page,
-        page: page + 1,
+        page: page,
       },
     });
     const images = response.data.hits;
