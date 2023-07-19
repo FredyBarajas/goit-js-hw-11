@@ -51,11 +51,11 @@ function handleResponse(response) {
   const totalHits = response.data.totalHits;
   Notify.success(`Hooray! We found ${totalHits} images.`);
   total = totalHits;
+  page = page + 1;
   if (total < page * per_page) {
     noMoreImages.classList.remove('hidden');
     btnLoadMore.classList.replace('load-More', 'hidden');
   }
-  page = 1;
 
   if (images.length === 0) {
     Notiflix.Notify.failure(
@@ -69,7 +69,7 @@ async function searchImages(event) {
   btnLoadMore.classList.replace('load-More', 'hidden');
   event.preventDefault();
   gallery.innerHTML = '';
-
+  page = 1;
   try {
     const response = await axios.get(urlBase, {
       params: {
@@ -111,37 +111,7 @@ async function loadMoreImages(event) {
     if (images.length === 0) {
       Notiflix.Notify.info('No more images to load.');
     } else {
-      const newMarkup = images
-        .map(
-          image => `
-      <a class="photo-card"
-      href="${image.largeImageURL}">
-        <img src="${image.webformatURL}" alt="${image.tags}" loading="lazy" class="photo"/>
-        <div class="info">
-          <p class="info-item">
-            <b>Likes<br/>${image.likes}</b>
-          </p>  
-          <p class="info-item">
-            <b>Views<br/>${image.views}</b>
-          </p>
-          <p class="info-item">
-            <b>Comments<br/>${image.comments}</b>
-          </p>
-          <p class="info-item">
-            <b>Downloads<br/>${image.downloads}</b>
-          </p>
-        </div>
-      </a>`
-        )
-        .join('');
-      gallery.innerHTML += newMarkup;
-      lightbox.refresh();
-      console.log(total - page * per_page);
-      page += 1;
-      if (total < page * per_page) {
-        noMoreImages.classList.remove('hidden');
-        btnLoadMore.classList.replace('load-More', 'hidden');
-      }
+      handleResponse(response);
       const { height: cardHeight } = document
         .querySelector('.gallery')
         .firstElementChild.getBoundingClientRect();
